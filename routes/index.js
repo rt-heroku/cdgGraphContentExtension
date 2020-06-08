@@ -29,17 +29,25 @@ var conn = new jsforce.Connection({
   version: '48.0'
 });
 conn.login(process.env.SFDCUSERNAME, process.env.SFDCPASSWORD, (err, userInfo) => {
-  if(err) {
-    console.error(err);
-    console.log(err.message);
-    return console.error(err);
-
-  }
+  if(err) return console.error(err);
   console.log(`click click click...We're in.`);
   //do automatic test stuff now
   
+  /*
+  var startTime = moment();
+  whoIsAtRiskAndHow()
+  .then(result => {
+    console.log('left method with result');
+    console.log(result);
+    var deltaTime = moment().diff(startTime);
+    var d = moment.utc(deltaTime).format("HH:mm:ss:SSS");
+    console.log(`runtime: ${d}`);
+  })
+  .catch(error => {
+    console.error(error);
+  });
+  */
 });
-
 
 router.get('/queries/findAllAtRiskEmployees', (req, res, next) => {
   var startTime = moment();
@@ -51,10 +59,12 @@ router.get('/queries/findAllAtRiskEmployees', (req, res, next) => {
     var d = moment.utc(deltaTime).format("HH:mm:ss:SSS");
     console.log(`runtime: ${d}`);
     res.sendStatus(200);
+    resolve();
   })
   .catch(error => {
     console.error(error);
     res.sendStatus(500);
+    reject();
   });
 });
 
@@ -168,7 +178,19 @@ var getAllDistinctNonPositiveEmployeesWhoWorkedShiftNearPositiveEmployees = func
 }
 
 
-
+router.get('/triggerDataIngest', (req, res, next) => {
+  //hit the api, fetch some individual data time.
+  const lastQueryTime = getLastQueryTime();
+  processAllTables(lastQueryTime)
+  .then((result) => {
+    console.log(`final ${result}`);
+    res.sendStatus(200);
+  })
+  .catch((error)=> {
+    console.error(error);
+    res.sendStatus(500);
+  })
+});
 
 var processAllTables = function(lastQueryTime){
   return new Promise((resolve, reject) => {
