@@ -33,6 +33,7 @@ conn.login(process.env.SFDCUSERNAME, process.env.SFDCPASSWORD, (err, userInfo) =
   console.log(`click click click...We're in.`);
   //do automatic test stuff now
   
+  /*
   var startTime = moment();
   whoIsAtRiskAndHow()
   .then(result => {
@@ -45,6 +46,7 @@ conn.login(process.env.SFDCUSERNAME, process.env.SFDCPASSWORD, (err, userInfo) =
   .catch(error => {
     console.error(error);
   });
+  */
 });
 
 router.get('/queries/findOverlappingEmployeesByShift', (req, res, next) => {
