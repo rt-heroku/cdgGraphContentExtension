@@ -29,7 +29,12 @@ var conn = new jsforce.Connection({
   version: '48.0'
 });
 conn.login(process.env.SFDCUSERNAME, process.env.SFDCPASSWORD, (err, userInfo) => {
-  if(err) return console.error(err);
+  if(err) {
+    console.error(err);
+    console.log(err.message);
+    return console.error(err);
+
+  }
   console.log(`click click click...We're in.`);
   //do automatic test stuff now
   
