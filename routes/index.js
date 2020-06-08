@@ -33,7 +33,10 @@ conn.login(process.env.SFDCUSERNAME, process.env.SFDCPASSWORD, (err, userInfo) =
   console.log(`click click click...We're in.`);
   //do automatic test stuff now
   
-  /*
+});
+
+
+router.get('/queries/findAllAtRiskEmployees', (req, res, next) => {
   var startTime = moment();
   whoIsAtRiskAndHow()
   .then(result => {
@@ -42,25 +45,15 @@ conn.login(process.env.SFDCUSERNAME, process.env.SFDCPASSWORD, (err, userInfo) =
     var deltaTime = moment().diff(startTime);
     var d = moment.utc(deltaTime).format("HH:mm:ss:SSS");
     console.log(`runtime: ${d}`);
+    res.sendStatus(200);
   })
   .catch(error => {
     console.error(error);
+    res.sendStatus(500);
   });
-  */
 });
 
-router.get('/queries/findOverlappingEmployeesByShift', (req, res, next) => {
-  var targetEmployee = req.params.employeeId;
-  var startDate = req.params.startDate;
-});
 
-router.get('/queries/findAllAtRiskEmployees', (req, res, next) => {
-  
-});
-
-router.get('/commands/updateAllData', (req, res, next) => {
-
-});
 
 var getAllRiskyShifts = function(){
   //Find all shifts worked by sick employees SINCE they got sick.
@@ -170,19 +163,7 @@ var getAllDistinctNonPositiveEmployeesWhoWorkedShiftNearPositiveEmployees = func
 }
 
 
-router.get('/triggerDataIngest', (req, res, next) => {
-  //hit the api, fetch some individual data time.
-  const lastQueryTime = getLastQueryTime();
-  processAllTables(lastQueryTime)
-  .then((result) => {
-    console.log(`final ${result}`);
-    res.sendStatus(200);
-  })
-  .catch((error)=> {
-    console.error(error);
-    res.sendStatus(500);
-  })
-});
+
 
 var processAllTables = function(lastQueryTime){
   return new Promise((resolve, reject) => {
