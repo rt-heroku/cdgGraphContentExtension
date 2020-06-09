@@ -66,24 +66,18 @@ conn.login(process.env.SFDCUSERNAME, process.env.SFDCPASSWORD, (err, userInfo) =
 
 router.get('/queries/findAllAtRiskEmployees', (req, res, next) => {
   var startTime = moment();
-  var finalValue;
   whoIsAtRiskAndHow()
   .then(result => {
     console.log('left method with result');
     var deltaTime = moment().diff(startTime);
     var d = moment.utc(deltaTime).format("HH:mm:ss:SSS");
     console.log(`runtime: ${d}`);
-    //res.send(JSON.stringify(result));
-    finalValue = result;
+    res.json(result);
   })
   .catch(error => {
     console.error(error);
     res.sendStatus(500);
     reject();
-  })
-  .then(() => {
-    console.log('maybe zoidberg');
-    res.json(finalValue);
   })
 });
 
@@ -135,16 +129,22 @@ var whoIsAtRiskAndHow = function(){
    cypher += `WHERE (atRisk.CurrentWellnessStatus <> "Unavailable") AND NOT (impactedShifts.EndTime<=sh.StartTime OR impactedShifts.StartTime>=sh.EndTime) AND impactedShifts.StartTime > atRisk.StatusAsOf `;
    cypher += `RETURN DISTINCT e.Id AS sickEmployee, sh.Id AS sickEmployeeShift,terr.Id as exposureTerritory, atRisk.Id AS EmployeeIDAtRisk, impactedShifts.Id AS exposureShift`;
     var returnMapByEmployee = new Map();
+    var returnObject;
+    /*
+      {
+        employeeID:[
+          {vectorObject}
+        ]
+      }
+    */
     var session = driver.session();
     session
     .run(cypher, {})
     .then(result => {
       result.records.forEach(record => {
-        //map (empID: list<events>)
-        //console.log(`EmployeeIDAtRisk: ${record.get('EmployeeIDAtRisk')} - ExposureShift: ${record.get('exposureShift')} - ExposureTerritory: ${record.get('exposureTerritory')} - sickShift: ${record.get('sickEmployeeShift')} - sickEmployee: ${record.get('sickEmployee')}`);
-        if(!returnMapByEmployee.get(record.get('EmployeeIDAtRisk'))){
-          //create new list for the new employee
-          returnMapByEmployee.set(record.get('EmployeeIDAtRisk'), []);
+        let empIDAtRisk = record.get('EmployeeIDAtRisk');
+        if(returnObject[empIDAtRisk] == undefined){
+          returnObject[empIDAtRisk] = [];
         }
         let vectorObject = {
           exposureShiftID: record.get('exposureShift'),
@@ -152,10 +152,10 @@ var whoIsAtRiskAndHow = function(){
           sickEmployeeShiftID: record.get('sickEmployeeShift'),
           sickEmployeeID: record.get('sickEmployee')
         }
-        returnMapByEmployee.get(record.get('EmployeeIDAtRisk')).push(vectorObject);
-        console.log(`New Vector Found For ${record.get('EmployeeIDAtRisk')}`);
+        returnObject[empIDAtRisk].push(vectorObject);
+        console.log(`New Vector Found For ${empIDAtRisk}`);
         //This will let us validate the info is inserted into the actual array. God it's verbose though oof.
-        console.log(returnMapByEmployee.get(record.get('EmployeeIDAtRisk'))[returnMapByEmployee.get(record.get('EmployeeIDAtRisk')).length-1]);
+        //console.log(returnMapByEmployee.get(record.get('EmployeeIDAtRisk'))[returnMapByEmployee.get(record.get('EmployeeIDAtRisk')).length-1]);
       });
     })
     .catch(error => {
