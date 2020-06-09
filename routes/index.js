@@ -19,7 +19,8 @@ objectFieldMap['SHIFT'] = ['StartTime', 'EndTime', 'ServiceResourceId', 'Service
 objectFieldMap['SERVICETERRITORY'] = ['ParentTerritoryId', 'TopLevelTerritoryId', 'wkfsl__Location__c', 'wkfsl__Maximum_Occupancy__c'];
 objectFieldMap['LOCATION'] = ['RootLocationId'];
 
-var driver = neo4j.driver(graphenedbURL, neo4j.auth.basic(graphenedbUser, graphenedbPass));
+
+var driver = neo4j.driver(graphenedbURL, neo4j.auth.basic(graphenedbUser, graphenedbPass), {encrypted: 'ENCRYPTION_ON'});
 
 var conn = new jsforce.Connection({
   loginUrl: process.env.SFDCURL,
@@ -31,6 +32,20 @@ var conn = new jsforce.Connection({
 conn.login(process.env.SFDCUSERNAME, process.env.SFDCPASSWORD, (err, userInfo) => {
   if(err) return console.error(err);
   console.log(`click click click...We're in.`);
+  console.log(driver);
+  var session = driver.session();
+  session
+  .run('MATCH (n) RETURN n', {})
+  .then(result=>{
+    console.log(result);
+  })
+  .catch(error=>{
+    console.error(error);
+  })
+  .then(()=>{
+    session.close();
+  });
+
   //do automatic test stuff now
   
   /*
