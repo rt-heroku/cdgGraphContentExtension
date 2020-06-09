@@ -66,21 +66,25 @@ conn.login(process.env.SFDCUSERNAME, process.env.SFDCPASSWORD, (err, userInfo) =
 
 router.get('/queries/findAllAtRiskEmployees', (req, res, next) => {
   var startTime = moment();
+  var finalValue;
   whoIsAtRiskAndHow()
   .then(result => {
     console.log('left method with result');
     var deltaTime = moment().diff(startTime);
     var d = moment.utc(deltaTime).format("HH:mm:ss:SSS");
     console.log(`runtime: ${d}`);
-    console.log(result);
-    //res.json(result);
-    res.send(JSON.stringify(result));
+    //res.send(JSON.stringify(result));
+    finalValue = result;
   })
   .catch(error => {
     console.error(error);
     res.sendStatus(500);
     reject();
-  });
+  })
+  .then(() => {
+    console.log('maybe zoidberg');
+    res.json(finalValue);
+  })
 });
 
 
