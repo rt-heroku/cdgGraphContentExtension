@@ -162,7 +162,7 @@ var whoIsAtRiskAndHow = function(){
     })
     .then(() => {
       session.close();
-      resolve(returnMapByEmployee);
+      resolve(returnObject);
     })
   });
 }
