@@ -77,7 +77,6 @@ router.get('/queries/findAllAtRiskEmployees', (req, res, next) => {
   .catch(error => {
     console.error(error);
     res.sendStatus(500);
-    reject();
   })
 });
 
@@ -129,7 +128,7 @@ var whoIsAtRiskAndHow = function(){
    cypher += `WHERE (atRisk.CurrentWellnessStatus <> "Unavailable") AND NOT (impactedShifts.EndTime<=sh.StartTime OR impactedShifts.StartTime>=sh.EndTime) AND impactedShifts.StartTime > atRisk.StatusAsOf `;
    cypher += `RETURN DISTINCT e.Id AS sickEmployee, sh.Id AS sickEmployeeShift,terr.Id as exposureTerritory, atRisk.Id AS EmployeeIDAtRisk, impactedShifts.Id AS exposureShift`;
     var returnMapByEmployee = new Map();
-    var returnObject;
+    var returnObject = {};
     /*
       {
         employeeID:[
