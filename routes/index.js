@@ -73,7 +73,7 @@ router.get('/queries/findAllAtRiskEmployees', (req, res, next) => {
     var deltaTime = moment().diff(startTime);
     var d = moment.utc(deltaTime).format("HH:mm:ss:SSS");
     console.log(`runtime: ${d}`);
-    res.send(result);
+    res.json(result);
   })
   .catch(error => {
     console.error(error);
