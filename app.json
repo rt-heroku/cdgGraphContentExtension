@@ -10,11 +10,7 @@
             "size": "free"
         }
     },
-    "addons":[
-        "graphenedb", {
-            "plan": "graphenedb:dev-free"
-        }
-    ],
+    
     "env":{
         "SFDCUSERNAME": {
             "description": "Org's username. Needs read access to Shift, Employee, Individual, Contact, ServiceTerritory, ServiceResource objects."
