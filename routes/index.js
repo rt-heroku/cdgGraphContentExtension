@@ -39,11 +39,11 @@ router.get('/triggerDataIngest', (req, res, next) => {
   processAllTables(lastQueryTime)
   .then((result) => {
     console.log(`final ${result}`);
-    res.sendStatus(200);
+    res.send(200);
   })
   .catch((error)=> {
     console.error(error);
-    res.sendStatus(500);
+    res.send(500);
   })
 });
 
@@ -103,7 +103,7 @@ router.get('/queries/findPotentialCasesFromSickEmployee', (req, res, next) => {
   var cypher = `MATCH (sickEmp:EMPLOYEE {Id:'${employeeID}'})<-[:IS]-()<-[:WORKED_BY]-(sickShifts:SHIFT)-[:LOCATED_AT]->(shiftTerritory:SERVICETERRITORY)<-[:LOCATED_AT]-(empShifts:SHIFT)-[:WORKED_BY]->()-[:IS]-(otherEmployees:EMPLOYEE) `;
   cypher +=    `WHERE otherEmployees.CurrentWellnessStatus <> "Unavailable" AND NOT (empShifts.EndTime <= sickShifts.StartTime OR empShifts.StartTime >= sickShifts.EndTime) `
   cypher +=    `AND sickShifts.StartTime >= '${riskPeriodStartDate}' `;
-  cypher +=    `RETURN sickShifts AS SickEmpShiftId, shiftTerritory as ShiftTerritoryId, empShifts AS AffectedEmployeeShiftId, otherEmployees.Id AS AffectedEmployeeId`;
+  cypher +=    `RETURN sickShifts.Id AS SickEmpShiftId, shiftTerritory.Id as ShiftTerritoryId, empShifts.Id AS AffectedEmployeeShiftId, otherEmployees.Id AS AffectedEmployeeId`;
   var returnObject = {};
   var session = driver.session();
   session
