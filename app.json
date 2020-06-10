@@ -11,9 +11,8 @@
         }
     },
     "addons":[
-        "graphenedb", {
-            "plan": "graphenedb:dev-free",
-            "as": "GRAPHENEDB"
+        "graph", {
+            "plan": "graphenedb:dev-free"
         }
     ],
     "env":{
