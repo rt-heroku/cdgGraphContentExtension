@@ -115,9 +115,9 @@ router.get('/queries/findPotentialCasesFromSickEmployee', (req, res, next) => {
         returnObject[affectedEmployeeId] = [];
       }
       let vectorObject = {
-        shiftId = record.get('AffectedEmployeeShiftId'),
-        territoryId = record.get('ShiftTerritoryId'),
-        sickEmpShiftId = record.get('SickEmpShiftId')
+        shiftId:record.get('AffectedEmployeeShiftId'),
+        territoryId: record.get('ShiftTerritoryId'),
+        sickEmpShiftId: record.get('SickEmpShiftId')
       }
       returnObject[affectedEmployeeId].push(vectorObject);
     });
