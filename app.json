@@ -1,0 +1,42 @@
+{
+    "name": "WDC Shift Management Contact Graph Extension",
+    "description": "Extending WDC to do more complicated relationship queries using Neo4j from Graphene and Heroku.",
+    "repository": "https://github.com/cowie/wdcGraphContactExtension",
+    "keywords": ["node", "neo4j", "Heroku"],
+    "scripts":{},
+    "formation": {
+        "web": {
+            "quantity": 1,
+            "size": "free"
+        }
+    },
+    "addons":[
+        "graphenedb", {
+            "plan": "dev-free",
+            "as": "GRAPHENEDB"
+        }
+    ],
+    "env":{
+        "SFDCUSERNAME": {
+            "description": "Org's username. Needs read access to Shift, Employee, Individual, Contact, ServiceTerritory, ServiceResource objects."
+        }, 
+        "SFDCPASSWORD": {
+            "description": "Your user password, with Dev Token appended.",
+            "value": "PASSWORDTOKEN"
+        },
+        "SFDCURL": {
+            "description": "Probably https://login.salesforce.com, https://test.salesforce.com, or https://mydomain.my.salesforce.com",
+            "value": "https://login.salesforce.com"
+        },
+        "SFCLIENTID": {
+            "description": "OAuth Client ID from the Connected App you made."
+        },
+        "SFCLIENTSECRET": {
+            "description": "OAuth Client Secret from the Connected App you made."
+        },
+        "SFREDIRECT": {
+            "description": "OAuth Redirect URL from the Connected App you made."
+        }
+    }
+
+}
