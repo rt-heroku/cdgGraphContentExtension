@@ -107,7 +107,7 @@ router.get('/queries/findPotentialCasesFromSickEmployee', (req, res, next) => {
   cypher +=    `RETURN sickShifts AS SickEmpShiftId, shiftTerritory as ShiftTerritoryId, empShifts AS AffectedEmployeeShiftId, otherEmployees.Id AS AffectedEmployeeId`;
   var returnObject = {};
   session
-  .run(cypher {employeeIDVar: employeeID, riskPeriodStartVar: riskPeriodStartDate})
+  .run(cypher, {employeeIDVar: employeeID, riskPeriodStartVar: riskPeriodStartDate})
   .then(result => {
     result.records.forEach(record => {
       let affectedEmployeeId = record.get('AffectedEmployeeId');
