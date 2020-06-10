@@ -66,12 +66,12 @@ router.get('/queries/findAllAtRiskEmployees', (req, res, next) => {
 router.get('/queries/findEmployeeRiskVectors', (req, res, next) => {
   let employeeID = req.params.employeeID;
   var returnObject = {};
-  var cypher = `MATCH (emp:EMPLOYEE {Id:$empIDVar})<-[:IS]-()<-[:WORKED_BY]-(empShifts:SHIFT)-[:LOCATED_AT]->(shiftTerritory:SERVICETERRITORY)<-[:LOCATED_AT]-(sickShifts:SHIFT)-[:WORKED_BY]->()-[:IS]->(sickEmps:EMPLOYEE {CurrentWellnessStatus:'Unavailable'}) `;
+  var cypher = `MATCH (emp:EMPLOYEE {Id:${employeeId}})<-[:IS]-()<-[:WORKED_BY]-(empShifts:SHIFT)-[:LOCATED_AT]->(shiftTerritory:SERVICETERRITORY)<-[:LOCATED_AT]-(sickShifts:SHIFT)-[:WORKED_BY]->()-[:IS]->(sickEmps:EMPLOYEE {CurrentWellnessStatus:'Unavailable'}) `;
   cypher +=    `WHERE sickShifts.StartTime > sickEmps.StatusAsOf AND NOT (sickShifts.EndTime <= empShifts.StartTime OR sickShifts.StartTime >= empShifts.EndTime) `;
   cypher +=    `RETURN DISTINCT emp.Id as EmployeeID, empShifts.Id as EmployeeRiskShift, shiftTerritory.Id as ShiftTerritory, sickShifts.Id as SickEmployeeShift, sickEmps.Id as sickEmployeeID`;
   var session = driver.session();
   session
-  .run(cypher, {empIDVar:employeeID})
+  .run(cypher, {})
   .then(result => {
     result.records.forEach(record => {
       let shiftID = record.get('EmployeeRiskShift');
@@ -101,13 +101,13 @@ router.get('/queries/findPotentialCasesFromSickEmployee', (req, res, next) => {
   let employeeID = req.params.employeeID;
   let riskPeriodStartDate = req.params.startDate; // should be zulu time - ISO string status, dig - 2020-06-10T17:00:24.163Z
 
-  var cypher = `MATCH (sickEmp:EMPLOYEE {Id:$employeeIDVar})<-[:IS]-()<-[:WORKED_BY]-(sickShifts:SHIFT)-[:LOCATED_AT]->(shiftTerritory:SERVICETERRITORY)<-[:LOCATED_AT]-(empShifts:SHIFT)-[:WORKED_BY]->()-[:IS]-(otherEmployees:EMPLOYEE) `;
+  var cypher = `MATCH (sickEmp:EMPLOYEE {Id:${employeeID}})<-[:IS]-()<-[:WORKED_BY]-(sickShifts:SHIFT)-[:LOCATED_AT]->(shiftTerritory:SERVICETERRITORY)<-[:LOCATED_AT]-(empShifts:SHIFT)-[:WORKED_BY]->()-[:IS]-(otherEmployees:EMPLOYEE) `;
   cypher +=    `WHERE otherEmployees.CurrentWellnessStatus <> "Unavailable" AND NOT (empShifts.EndTime <= sickShifts.StartTime OR empShifts.StartTime >= sickShifts.EndTime) `
-  cypher +=    `AND sickShifts.StartTime >= $riskPeriodStartVar `;
+  cypher +=    `AND sickShifts.StartTime >= ${riskPeriodStartDate} `;
   cypher +=    `RETURN sickShifts AS SickEmpShiftId, shiftTerritory as ShiftTerritoryId, empShifts AS AffectedEmployeeShiftId, otherEmployees.Id AS AffectedEmployeeId`;
   var returnObject = {};
   session
-  .run(cypher, {employeeIDVar: employeeID, riskPeriodStartVar: riskPeriodStartDate})
+  .run(cypher, {})
   .then(result => {
     result.records.forEach(record => {
       let affectedEmployeeId = record.get('AffectedEmployeeId');
