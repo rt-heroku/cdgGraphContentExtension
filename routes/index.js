@@ -81,7 +81,7 @@ router.get('/queries/findEmployeeRiskVectors', (req, res, next) => {
       let vectorObject = {
         shiftTerritoryID: record.get('ShiftTerritory'),
         sickShiftID: record.get('SickEmployeeShift'),
-        sickEmployeeID: record.get('sickEmployeeId')
+        sickEmployeeID: record.get('sickEmployeeID')
       }
       returnObject[shiftID].push(vectorObject);
     });
