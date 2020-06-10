@@ -19,7 +19,6 @@ objectFieldMap['SHIFT'] = ['StartTime', 'EndTime', 'ServiceResourceId', 'Service
 objectFieldMap['SERVICETERRITORY'] = ['ParentTerritoryId', 'TopLevelTerritoryId', 'wkfsl__Location__c', 'wkfsl__Maximum_Occupancy__c'];
 objectFieldMap['LOCATION'] = ['RootLocationId'];
 
-
 var driver = neo4j.driver(graphenedbURL, neo4j.auth.basic(graphenedbUser, graphenedbPass), {encrypted: 'ENCRYPTION_ON'});
 
 var conn = new jsforce.Connection({
@@ -32,36 +31,20 @@ var conn = new jsforce.Connection({
 conn.login(process.env.SFDCUSERNAME, process.env.SFDCPASSWORD, (err, userInfo) => {
   if(err) return console.error(err);
   console.log(`click click click...We're in.`);
-  console.log(driver);
-  var session = driver.session();
-  session
-  .run('MATCH (n) RETURN n', {})
-  .then(result=>{
-    console.log(result);
-  })
-  .catch(error=>{
-    console.error(error);
-  })
-  .then(()=>{
-    session.close();
-  });
+});
 
-  //do automatic test stuff now
-  
-  /*
-  var startTime = moment();
-  whoIsAtRiskAndHow()
-  .then(result => {
-    console.log('left method with result');
-    console.log(result);
-    var deltaTime = moment().diff(startTime);
-    var d = moment.utc(deltaTime).format("HH:mm:ss:SSS");
-    console.log(`runtime: ${d}`);
+router.get('/triggerDataIngest', (req, res, next) => {
+  //hit the api, fetch some individual data time.
+  const lastQueryTime = getLastQueryTime();
+  processAllTables(lastQueryTime)
+  .then((result) => {
+    console.log(`final ${result}`);
+    res.sendStatus(200);
   })
-  .catch(error => {
+  .catch((error)=> {
     console.error(error);
-  });
-  */
+    res.sendStatus(500);
+  })
 });
 
 router.get('/queries/findAllAtRiskEmployees', (req, res, next) => {
@@ -80,6 +63,74 @@ router.get('/queries/findAllAtRiskEmployees', (req, res, next) => {
   })
 });
 
+router.get('/queries/findEmployeeRiskVectors', (req, res, next) => {
+  let employeeID = req.params.employeeID;
+  var returnObject = {};
+  var cypher = `MATCH (emp:EMPLOYEE {Id:$empIDVar})<-[:IS]-()<-[:WORKED_BY]-(empShifts:SHIFT)-[:LOCATED_AT]->(shiftTerritory:SERVICETERRITORY)<-[:LOCATED_AT]-(sickShifts:SHIFT)-[:WORKED_BY]->()-[:IS]->(sickEmps:EMPLOYEE {CurrentWellnessStatus:'Unavailable'}) `;
+  cypher +=    `WHERE sickShifts.StartTime > sickEmps.StatusAsOf AND NOT (sickShifts.EndTime <= empShifts.StartTime OR sickShifts.StartTime >= empShifts.EndTime) `;
+  cypher +=    `RETURN DISTINCT emp.Id as EmployeeID, empShifts.Id as EmployeeRiskShift, shiftTerritory.Id as ShiftTerritory, sickShifts.Id as SickEmployeeShift, sickEmps.Id as sickEmployeeID`;
+  var session = driver.session();
+  session
+  .run(cypher, {empIDVar:employeeID})
+  .then(result => {
+    result.records.forEach(record => {
+      let shiftID = record.get('EmployeeRiskShift');
+      if(returnObject[shiftID] == undefined){
+        returnObject[shiftID] = [];
+      }
+      let vectorObject = {
+        shiftTerritoryID: record.get('ShiftTerritory'),
+        sickShiftID: record.get('SickEmployeeShift'),
+        sickEmployeeID: record.get('sickEmployeeId')
+      }
+      returnObject[shiftID].push(vectorObject);
+    });
+  })
+  .catch(error => {
+    console.error(error);
+    res.send(500);
+  })
+  .then(() => {
+    console.log('done');
+    session.close();
+    res.json(returnObject);
+  })
+});
+
+router.get('/queries/findPotentialCasesFromSickEmployee', (req, res, next) => {
+  let employeeID = req.params.employeeID;
+  let riskPeriodStartDate = req.params.startDate; // should be zulu time - ISO string status, dig - 2020-06-10T17:00:24.163Z
+
+  var cypher = `MATCH (sickEmp:EMPLOYEE {Id:$employeeIDVar})<-[:IS]-()<-[:WORKED_BY]-(sickShifts:SHIFT)-[:LOCATED_AT]->(shiftTerritory:SERVICETERRITORY)<-[:LOCATED_AT]-(empShifts:SHIFT)-[:WORKED_BY]->()-[:IS]-(otherEmployees:EMPLOYEE) `;
+  cypher +=    `WHERE otherEmployees.CurrentWellnessStatus <> "Unavailable" AND NOT (empShifts.EndTime <= sickShifts.StartTime OR empShifts.StartTime >= sickShifts.EndTime) `
+  cypher +=    `AND sickShifts.StartTime >= $riskPeriodStartVar `;
+  cypher +=    `RETURN sickShifts AS SickEmpShiftId, shiftTerritory as ShiftTerritoryId, empShifts AS AffectedEmployeeShiftId, otherEmployees.Id AS AffectedEmployeeId`;
+  var returnObject = {};
+  session
+  .run(cypher {employeeIDVar: employeeID, riskPeriodStartVar: riskPeriodStartDate})
+  .then(result => {
+    result.records.forEach(record => {
+      let affectedEmployeeId = record.get('AffectedEmployeeId');
+      if(returnObject[affectedEmployeeId] == undefined){
+        returnObject[affectedEmployeeId] = [];
+      }
+      let vectorObject = {
+        shiftId = record.get('AffectedEmployeeShiftId'),
+        territoryId = record.get('ShiftTerritoryId'),
+        sickEmpShiftId = record.get('SickEmpShiftId')
+      }
+      returnObject[affectedEmployeeId].push(vectorObject);
+    });
+  })
+  .catch(error => {
+    console.error(error);
+  })
+  .then(() => {
+    console.log('done');
+    session.close();
+    res.json(returnObject);
+  })
+});
 
 
 var getAllRiskyShifts = function(){
@@ -127,15 +178,7 @@ var whoIsAtRiskAndHow = function(){
    cypher += `WITH sh, e MATCH (sh)-[:LOCATED_AT]->(terr:SERVICETERRITORY)<-[:LOCATED_AT]-(impactedShifts:SHIFT)-[:WORKED_BY]->()-[:IS]->(atRisk:EMPLOYEE) `;
    cypher += `WHERE (atRisk.CurrentWellnessStatus <> "Unavailable") AND NOT (impactedShifts.EndTime<=sh.StartTime OR impactedShifts.StartTime>=sh.EndTime) AND impactedShifts.StartTime > atRisk.StatusAsOf `;
    cypher += `RETURN DISTINCT e.Id AS sickEmployee, sh.Id AS sickEmployeeShift,terr.Id as exposureTerritory, atRisk.Id AS EmployeeIDAtRisk, impactedShifts.Id AS exposureShift`;
-    var returnMapByEmployee = new Map();
     var returnObject = {};
-    /*
-      {
-        employeeID:[
-          {vectorObject}
-        ]
-      }
-    */
     var session = driver.session();
     session
     .run(cypher, {})
@@ -194,21 +237,6 @@ var getAllDistinctNonPositiveEmployeesWhoWorkedShiftNearPositiveEmployees = func
     })
   });
 }
-
-
-router.get('/triggerDataIngest', (req, res, next) => {
-  //hit the api, fetch some individual data time.
-  const lastQueryTime = getLastQueryTime();
-  processAllTables(lastQueryTime)
-  .then((result) => {
-    console.log(`final ${result}`);
-    res.sendStatus(200);
-  })
-  .catch((error)=> {
-    console.error(error);
-    res.sendStatus(500);
-  })
-});
 
 var processAllTables = function(lastQueryTime){
   return new Promise((resolve, reject) => {
@@ -388,6 +416,10 @@ function getLastQueryTime(){
         console.log(error);
       }
     });
+}
+
+function updateLastQueryTime(){
+
 }
 
 
