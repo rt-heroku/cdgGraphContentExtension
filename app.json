@@ -12,7 +12,7 @@
     },
     "addons":[
         "graphenedb", {
-            "plan": "dev-free",
+            "plan": "graphenedb:dev-free",
             "as": "GRAPHENEDB"
         }
     ],
