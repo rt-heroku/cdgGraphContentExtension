@@ -1,4 +1,4 @@
-# WDC Shift Management Contact Graph Extension _(wdcGraphContactExtension)_
+# Shift Management Contact Graph Extension _(cdgGraphContactExtension)_
 
 
 [![Salesforce API v48.0](https://img.shields.io/badge/Salesforce%20API-v48.0-blue.svg)]()
@@ -8,18 +8,14 @@
 [![User License Platform](https://img.shields.io/badge/User%20License-Platform-032e61.svg)]()
 
 
-> Extending WDC to do more complicated relationship queries using Neo4j from Graphene and Heroku.
+> Extending shift management to do more complicated relationship queries using Neo4j from Graphene and Heroku.
 
 This tool will automatically ingest 'safe' data from the WDC shift management module out of your SFDC org and stitch it together as a related set of nodes. Then it exposes 3 query APIs to get a JSON return of IDs for the usecases each has, which you'd use to make your SFDC queries to pull in context for the IDs returned. This doesn't have the SFDC side.
 
 ## Security and Limitations (see note)
 There's no touch on the Salesforce side of the coin from a limits standpoint. Really a handful of simple API requests which even at scale wouldn't destroy the world. 
 
-On Security, the runtime is common, and the Neo4j backend is owned/operated by Graphene. It uses encryption, but you'd have to vette the provider of your DB around security/residency/etc concerns. I will say that you're ONLY extracting SFID's and certain filter points, no PII (aside from MAYBE test date could be arguable depending on company size). Fully tokenized.
-
-## Background
-
-Gimmie yer life story here. Motivation, dependencies that might be unclear, what this thing is and what you're trying to accomplish. 
+On Security, the runtime is common, and the Neo4j backend is owned/operated by Graphene. It uses TLS encryption, but you'd have to vette the provider of your DB around security/residency/etc concerns. I will say that you're ONLY extracting SFID's and certain filter points, no PII (aside from MAYBE test date could be arguable depending on company size). Fully tokenized.
 
 ## Install
 
@@ -41,9 +37,15 @@ Let the server build - and again, give it a bit of time. Graphene takes a solid 
 Note: Because I don't wanna cost you change, this Button uses the Free (Dev) tier of Graphene. This version sleeps on Idle, and has a 1000 node limit and 10000 relationship limit. That means you can use it - but it'll be SUPER limited on data size to test. I did most of my work on the Dev Basic tier at 9/mo, which is basically a 100x increase. Figured it was worth the cost but you do you.
 
 ### Dependencies
-* Salesforce org with WDC + Shift Management INSTALLED
+* Salesforce org with WDC + Shift Management INSTALLED, and some data would help too.
 
 ## Usage
+
+#### /()
+**Returns**
+* Type *HTML*
+
+Hit this endpoint and you'll get a super simple HTML output of lists of threat vectors for the AllAtRiskEmployees data.
 
 #### /triggerDataIngest()
 **Returns**

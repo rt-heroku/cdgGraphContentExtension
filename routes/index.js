@@ -20,7 +20,7 @@ objectFieldMap['SERVICETERRITORY'] = ['ParentTerritoryId', 'TopLevelTerritoryId'
 objectFieldMap['LOCATION'] = ['RootLocationId'];
 
 var driver = neo4j.driver(graphenedbURL, neo4j.auth.basic(graphenedbUser, graphenedbPass), {encrypted: 'ENCRYPTION_ON'});
-//var driver = neo4j.driver(graphenedbURL, neo4j.auth.basic(graphenedbUser, graphenedbPass));
+//var driver = neo4j.driver(graphenedbURL, neo4j.auth.basic(graphenedbUser, graphenedbPass)); (for local)
 
 var conn = new jsforce.Connection({
   loginUrl: process.env.SFDCURL,
@@ -33,6 +33,20 @@ conn.login(process.env.SFDCUSERNAME, process.env.SFDCPASSWORD, (err, userInfo) =
   if(err) return console.error(err);
   console.log(`click click click...We're in.`);
 });
+
+/* GET home page. */
+router.get('/', function(req, res, next) {
+  var returnPayload;
+  whoIsAtRiskAndHow2()
+  .then((result) => {
+    returnPayload = result;
+    res.render('index', { title: 'Express', data: returnPayload });
+  })
+  .catch(error => {
+    res.render('error', {error: error});
+  });
+});
+
 
 router.get('/triggerDataIngest', (req, res, next) => {
   //hit the api, fetch some individual data time.
@@ -135,13 +149,6 @@ router.get('/queries/findPotentialCasesFromSickEmployee', (req, res, next) => {
 
 var whoIsAtRiskAndHow = function(){
   return new Promise((resolve, reject) => {
-    /* Original without identifying shift was a danger
-    var cypher = `MATCH (e:EMPLOYEE)<-[:IS]-(:SERVICERESOURCE)<-[:WORKED_BY]-(others:SHIFT)-[:LOCATED_AT]->(terr:SERVICETERRITORY)<-[:LOCATED_AT]-(sh:SHIFT)-[:WORKED_BY]->(:SERVICERESOURCE)-[:IS]->(sick:EMPLOYEE {CurrentWellnessStatus:"Unavailable"}) `;
-    cypher +=    `WHERE NOT e.CurrentWellnessStatus = 'Unavailable' `;
-    cypher +=    `WITH others, sh, terr, e, sick `;
-    cypher +=    `WHERE (e.CurrentWellnessStatus <> "Unavailable") AND NOT (others.EndTime<=sh.StartTime OR others.StartTime>=sh.EndTime) `;
-    cypher +=    `RETURN DISTINCT  e.Id as EmployeeIDAtRisk, others.Id as exposureShift, terr.Id as exposureTerritory, sick.Id as sickEmployee, sh.Id as sickEmployeeShift `;
-    */
    var cypher = `MATCH (e:EMPLOYEE {CurrentWellnessStatus: "Unavailable"})<-[:IS]-()<-[:WORKED_BY]-(sh:SHIFT) WHERE e.StatusAsOf < sh.StartTime `;
    cypher += `WITH sh, e MATCH (sh)-[:LOCATED_AT]->(terr:SERVICETERRITORY)<-[:LOCATED_AT]-(impactedShifts:SHIFT)-[:WORKED_BY]->()-[:IS]->(atRisk:EMPLOYEE) `;
    cypher += `WHERE (atRisk.CurrentWellnessStatus <> "Unavailable") AND NOT (impactedShifts.EndTime<=sh.StartTime OR impactedShifts.StartTime>=sh.EndTime) AND impactedShifts.StartTime > atRisk.StatusAsOf `;
@@ -179,61 +186,6 @@ var whoIsAtRiskAndHow = function(){
     })
   });
 }
-
-router.get('/testD3JSON', (req,res,next) => {
-  whoIsAtRiskAndHow()
-  .then(result => {
-    let finalProduct = convertGraphToSunburstTree(result);
-    res.render('d3simpleTree', {data: JSON.stringify(finalProduct)});
-  })
-  .catch(error => {
-    console.error(error);
-    res.render('error', {error});
-  })
-})
-
-
-var convertGraphToSunburstTree = function(queryInput){
-    let employeeKeys = Object.keys(queryInput);
-    var returnTree = {};
-    returnTree.name = "sunburstForm";
-    returnTree.children = [];
-    //employee -- territory -- shift/employee
-    employeeKeys.forEach(employeeID => {
-      let employeeObject = {};
-      employeeObject.name = employeeID;
-      employeeObject.children = [];
-      let shiftArray = queryInput[employeeID];
-      var territoryObject = {};
-      shiftArray.forEach(shiftObject => {
-        if(shiftObject.exposureTerritoryID != territoryObject.name){
-          if(territoryObject.name != undefined) 
-            employeeObject.children.push(territoryObject);
-          territoryObject = new Object();
-          territoryObject = {"name": shiftObject.exposureTerritoryID, "children": []};
-        }
-        territoryObject.children.push({"name": shiftObject.sickEmployeeID, "value": 5});
-        //is the territory listed
-          //if not, create territory object and array
-          // add shift to territory array
-      });
-      employeeObject.children.push(territoryObject);
-      returnTree.children.push(employeeObject);
-    });
-    return returnTree;
-}
-
-/*
-let vectorObject = {
-          exposureShiftID: record.get('exposureShift'),
-          exposureTerritoryID: record.get('exposureTerritory'),
-          sickEmployeeShiftID: record.get('sickEmployeeShift'),
-          sickEmployeeID: record.get('sickEmployee')
-        }
-*/
-
-
-
 
 var processAllTables = function(lastQueryTime){
   return new Promise((resolve, reject) => {
@@ -406,25 +358,6 @@ function getLastQueryTime(){
       }
     });
 }
-
-function updateLastQueryTime(){
-
-}
-
-
-/* GET home page. */
-router.get('/', function(req, res, next) {
-  var returnPayload;
-  whoIsAtRiskAndHow2()
-  .then((result) => {
-    returnPayload = result;
-    res.render('index', { title: 'Express', data: returnPayload });
-  })
-  .catch(error => {
-    res.render('error', {error: error});
-  });
-});
-
 
 var whoIsAtRiskAndHow2 = function(){
   return new Promise((resolve, reject)=>{
