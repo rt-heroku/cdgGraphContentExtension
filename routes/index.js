@@ -19,7 +19,8 @@ objectFieldMap['SHIFT'] = ['StartTime', 'EndTime', 'ServiceResourceId', 'Service
 objectFieldMap['SERVICETERRITORY'] = ['ParentTerritoryId', 'TopLevelTerritoryId', 'wkfsl__Location__c', 'wkfsl__Maximum_Occupancy__c'];
 objectFieldMap['LOCATION'] = ['RootLocationId'];
 
-var driver = neo4j.driver(graphenedbURL, neo4j.auth.basic(graphenedbUser, graphenedbPass), {encrypted: 'ENCRYPTION_ON'});
+//var driver = neo4j.driver(graphenedbURL, neo4j.auth.basic(graphenedbUser, graphenedbPass), {encrypted: 'ENCRYPTION_ON'});
+var driver = neo4j.driver(graphenedbURL, neo4j.auth.basic(graphenedbUser, graphenedbPass));
 
 var conn = new jsforce.Connection({
   loginUrl: process.env.SFDCURL,
@@ -132,39 +133,6 @@ router.get('/queries/findPotentialCasesFromSickEmployee', (req, res, next) => {
   })
 });
 
-
-var getAllRiskyShifts = function(){
-  //Find all shifts worked by sick employees SINCE they got sick.
-  return new Promise((resolve, reject) => {
-    var cypher = `MATCH (e:EMPLOYEE {CurrentWellnessStatus: "Unavailable"})<-[:IS]-()<-[:WORKED_BY]-(sh:SHIFT) `;
-    cypher +=    `WHERE e.StatusAsOf < sh.StartTime RETURN e.Id AS EmployeeID, sh.Id AS ShiftID`;
-    var returnMapByEmployee = new Map();
-    var session = driver.session();
-    session
-    .run(cypher, {})
-    .then(result => {
-      result.records.forEach(record => {
-        if(returnMapByEmployee.get(record.get('EmployeeID'))){
-          returnMapByEmployee.set(record.get('EmployeeID'), []);
-        }
-        let vectorObject = {
-          riskyShiftID: record.get('ShiftID'),
-          employeeID: record.get('EmployeeID')
-        }
-        returnMapByEmployee.get(record.get('EmployeeID')).push(vectorObject);
-        console.log(`New risky shift found for ${record.get('EmployeeID')}`);
-      });
-    })
-    .catch(error => {
-      reject(Error(error));
-    })
-    .then(()=>{
-      session.close();
-      resolve(returnMapByEmployee);
-    });
-  });
-}
-
 var whoIsAtRiskAndHow = function(){
   return new Promise((resolve, reject) => {
     /* Original without identifying shift was a danger
@@ -177,7 +145,8 @@ var whoIsAtRiskAndHow = function(){
    var cypher = `MATCH (e:EMPLOYEE {CurrentWellnessStatus: "Unavailable"})<-[:IS]-()<-[:WORKED_BY]-(sh:SHIFT) WHERE e.StatusAsOf < sh.StartTime `;
    cypher += `WITH sh, e MATCH (sh)-[:LOCATED_AT]->(terr:SERVICETERRITORY)<-[:LOCATED_AT]-(impactedShifts:SHIFT)-[:WORKED_BY]->()-[:IS]->(atRisk:EMPLOYEE) `;
    cypher += `WHERE (atRisk.CurrentWellnessStatus <> "Unavailable") AND NOT (impactedShifts.EndTime<=sh.StartTime OR impactedShifts.StartTime>=sh.EndTime) AND impactedShifts.StartTime > atRisk.StatusAsOf `;
-   cypher += `RETURN DISTINCT e.Id AS sickEmployee, sh.Id AS sickEmployeeShift,terr.Id as exposureTerritory, atRisk.Id AS EmployeeIDAtRisk, impactedShifts.Id AS exposureShift`;
+   cypher += `RETURN DISTINCT e.Id AS sickEmployee, sh.Id AS sickEmployeeShift,terr.Id as exposureTerritory, atRisk.Id AS EmployeeIDAtRisk, impactedShifts.Id AS exposureShift `;
+   cypher += `ORDER BY sickEmployee, exposureTerritory, exposureShift, sickEmployee`;
     var returnObject = {};
     var session = driver.session();
     session
@@ -189,6 +158,7 @@ var whoIsAtRiskAndHow = function(){
           returnObject[empIDAtRisk] = [];
         }
         let vectorObject = {
+          atRiskEmployeeID: empIDAtRisk,
           exposureShiftID: record.get('exposureShift'),
           exposureTerritoryID: record.get('exposureTerritory'),
           sickEmployeeShiftID: record.get('sickEmployeeShift'),
@@ -210,33 +180,60 @@ var whoIsAtRiskAndHow = function(){
   });
 }
 
-var getAllDistinctNonPositiveEmployeesWhoWorkedShiftNearPositiveEmployees = function(){
-  return new Promise((resolve, reject) => {
-    var cypher = `MATCH (e:EMPLOYEE)<-[:IS]-(:SERVICERESOURCE)<-[:WORKED_BY]-(others:SHIFT)-[:LOCATED_AT]->(terr:SERVICETERRITORY)<-[:LOCATED_AT]-(sh:SHIFT) `;
-    cypher +=    `WHERE (sh)-[:WORKED_BY]->(:SERVICERESOURCE)-[:IS]->(:EMPLOYEE {CurrentWellnessStatus:"Unavailable"}) `;
-    cypher +=    `AND NOT e.CurrentWellnessStatus = 'Unavailable' `;
-    cypher +=    `WITH others, sh, terr, e `;
-    cypher +=    `WHERE NOT (others.EndTime<=sh.StartTime OR others.StartTime>=sh.EndTime) `;
-    cypher +=    `RETURN DISTINCT e.Id as EmployeeIDAtRisk`;
-    var idList = [];
-    var session = driver.session();
-    session
-    .run(cypher, {})
-    .then(result => {
-      result.records.forEach(record => {
-        //console.log(record.get('EmployeeIDAtRisk'));
-        idList.push(record.get('EmployeeIDAtRisk'));
+router.get('/testD3JSON', (req,res,next) => {
+  whoIsAtRiskAndHow()
+  .then(result => {
+    let finalProduct = convertGraphToSunburstTree(result);
+    res.render('d3simpleTree', {data: JSON.stringify(finalProduct)});
+  })
+  .catch(error => {
+    console.error(error);
+    res.render('error', {error});
+  })
+})
+
+
+var convertGraphToSunburstTree = function(queryInput){
+    let employeeKeys = Object.keys(queryInput);
+    var returnTree = {};
+    returnTree.name = "sunburstForm";
+    returnTree.children = [];
+    //employee -- territory -- shift/employee
+    employeeKeys.forEach(employeeID => {
+      let employeeObject = {};
+      employeeObject.name = employeeID;
+      employeeObject.children = [];
+      let shiftArray = queryInput[employeeID];
+      var territoryObject = {};
+      shiftArray.forEach(shiftObject => {
+        if(shiftObject.exposureTerritoryID != territoryObject.name){
+          if(territoryObject.name != undefined) 
+            employeeObject.children.push(territoryObject);
+          territoryObject = new Object();
+          territoryObject = {"name": shiftObject.exposureTerritoryID, "children": []};
+        }
+        territoryObject.children.push({"name": shiftObject.sickEmployeeID, "value": 5});
+        //is the territory listed
+          //if not, create territory object and array
+          // add shift to territory array
       });
-    })
-    .catch(error => {
-      reject(Error(error));
-    })
-    .then(() => {
-      session.close();
-      resolve(idList);
-    })
-  });
+      employeeObject.children.push(territoryObject);
+      returnTree.children.push(employeeObject);
+    });
+    return returnTree;
 }
+
+/*
+let vectorObject = {
+          exposureShiftID: record.get('exposureShift'),
+          exposureTerritoryID: record.get('exposureTerritory'),
+          sickEmployeeShiftID: record.get('sickEmployeeShift'),
+          sickEmployeeID: record.get('sickEmployee')
+        }
+*/
+
+
+
 
 var processAllTables = function(lastQueryTime){
   return new Promise((resolve, reject) => {
@@ -262,14 +259,6 @@ var processAllTables = function(lastQueryTime){
     .then((result) => {
       console.log('All tables inserted. Time to move on to restitching relationships.');
       return handleAllRelationships();
-      //match (e:EMPLOYEE), (i:INDIVIDUAL) WHERE i.Id = e.IndividualId create (e)-[x:IS]->(i) return x
-      //match (c:CONTACT), (i:INDIVIDUAL) WHERE i.Id = c.IndividualId CREATE (c)-[x:IS]->(i) RETURN x
-      //MATCH (sr:SERVICERESOURCE), (e:EMPLOYEE) WHERE sr.wkfsl__Employee__c = e.Id CREATE (sr)-[x:IS]->(e) RETURN x;
-      //MATCH (sh:SHIFT), (sr:SERVICERESOURCE) WHERE sh.ServiceResourceId = sr.Id CREATE (sh)-[w:WORKED_BY]->(sr) RETURN w
-      //MATCH (st:SERVICETERRITORY), (sh:SHIFT) WHERE sh.ServiceTerritoryId = st.Id CREATE (sh)-[l:LOCATED_AT]->(st) RETURN l
-      //MATCH (child:SERVICETERRITORY), (parent:SERVICETERRITORY) WHERE child.ParentTerritoryId = parent.Id CREATE (child)-[p:PART_OF]->(parent) return p
-      //MATCH (child:SERVICETERRITORY), (topLevel:SERVICETERRITORY) WHERE child.TopLevelTerritoryId = topLevel.Id CREATE (child)-[tl:TOP_LEVEL]->(topLevel) return tl
-      //MATCH (st:SERVICETERRITORY), (l:LOCATION) WHERE st.wkfsl__Location__c = l.Id CREATE (st)-[x:LOCATED_IN]->(l) return x
     })
     .then((result) => {
       console.log(`processTables result ${result}`);
@@ -425,9 +414,58 @@ function updateLastQueryTime(){
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-
-  res.render('index', { title: 'Express' });
+  var returnPayload;
+  whoIsAtRiskAndHow2()
+  .then((result) => {
+    returnPayload = result;
+    res.render('index', { title: 'Express', data: returnPayload });
+  })
+  .catch(error => {
+    res.render('error', {error: error});
+  });
 });
 
+
+var whoIsAtRiskAndHow2 = function(){
+  return new Promise((resolve, reject)=>{
+    var cypher = `MATCH (e:EMPLOYEE {CurrentWellnessStatus: "Unavailable"})<-[:IS]-()<-[:WORKED_BY]-(sh:SHIFT) WHERE e.StatusAsOf < sh.StartTime `;
+    cypher += `WITH sh, e MATCH (sh)-[:LOCATED_AT]->(terr:SERVICETERRITORY)<-[:LOCATED_AT]-(impactedShifts:SHIFT)-[:WORKED_BY]->()-[:IS]->(atRisk:EMPLOYEE) `;
+    cypher += `WHERE (atRisk.CurrentWellnessStatus <> "Unavailable") AND NOT (impactedShifts.EndTime<=sh.StartTime OR impactedShifts.StartTime>=sh.EndTime) AND impactedShifts.StartTime > atRisk.StatusAsOf `;
+    cypher += `RETURN DISTINCT e.Id AS sickEmployee, sh.Id AS sickEmployeeShift,terr.Id as exposureTerritory, atRisk.Id AS EmployeeIDAtRisk, impactedShifts.Id AS exposureShift `;
+    cypher += `ORDER BY EmployeeIDAtRisk, exposureTerritory, exposureShift, sickEmployee`;
+    var returnObject = [];
+    var currentObject = {EmployeeIDAtRisk: undefined, riskEvents:[]};
+    var session = driver.session();
+    session
+    .run(cypher, {})
+    .then(result => {
+      result.records.forEach(record => {
+        if(record.get('EmployeeIDAtRisk') != currentObject.EmployeeIDAtRisk){
+          console.log('entered create new object thing');
+          if(currentObject.EmployeeIDAtRisk != undefined) returnObject.push(currentObject);
+          currentObject = new Object(); 
+          currentObject.EmployeeIDAtRisk = record.get('EmployeeIDAtRisk');
+          currentObject.riskEvents = [];
+        }
+        let vectorObject = {
+          exposureShiftID: record.get('exposureShift'),
+          exposureTerritoryID: record.get('exposureTerritory'),
+          sickEmployeeShiftID: record.get('sickEmployeeShift'),
+          sickEmployeeID: record.get('sickEmployee')
+        }
+        currentObject.riskEvents.push(vectorObject);
+      });
+      console.log('exited loop');
+      returnObject.push(currentObject);
+    })
+    .catch(error => {
+      reject(Error(error));
+    })
+    .then(() => {
+      session.close();
+      resolve(returnObject);
+    })
+  });
+}
 
 module.exports = router;

@@ -6,3 +6,21 @@ body {
 a {
   color: #00B7FF;
 }
+
+.bold{
+  font-weight: bold;
+}
+
+
+.node circle {
+  fill: #fff;
+  stroke: steelblue;
+  stroke-width: 3px;
+}
+
+.node text {font: 12px sans-serif;}
+.link{
+  fill:none;
+  stroke: #cccccc;
+  stroke-width:2px;
+}

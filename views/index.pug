@@ -3,3 +3,14 @@ extends layout
 block content
   h1= title
   p Welcome to #{title}
+  ul#baseList
+    each emp in data
+      li#baseNode Employee #{emp.EmployeeIDAtRisk} Is At Risk
+        ul#childList
+          each evt in emp.riskEvents
+            li#childNode
+              .bold Shift #{evt.exposureShiftID} Exposure
+              div Overlapping Territory: #{evt.exposureTerritoryID} | Overlapping Sick Employee: #{evt.sickEmployeeID}
+
+  script.
+    var d = !{JSON.stringify(data)}
