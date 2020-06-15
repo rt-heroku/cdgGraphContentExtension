@@ -75,6 +75,7 @@ Alright, the biggun. Lotta steps to this, yet only a 2-part query in Graph. Firs
 #### /queries/findEmployeeRiskVectors(employeeID)
 **URL Query Params**
 * employeeID, *string* :18 digit SFID for the employee you want to check
+
 **Returns**
 * Type *JSON String*
 ```
@@ -118,7 +119,7 @@ Another way to look at similar data, this is what you run if someone suddenly tu
 ## Extra Sections
 ## Thanks
 <!--Don't be a jerk thank those who helped you-->
-As always I stole the readme format from - [!Richard Litt(https://github.com/RichardLitt/standard-readme/blob/master/spec.md)]'s standard-readme doc. Ideas about doing this from Shawn (Butters) Butterfield and Abigail Knox, along with Abhishek Chaturvedi for caring about Graph.
+As always I stole the readme format from - [Richard Litt's](https://github.com/RichardLitt/standard-readme/blob/master/spec.md) standard-readme doc. Ideas about doing this from Shawn (Butters) Butterfield and Abigail Knox, along with Abhishek Chaturvedi for caring about Graph.
 
 ## Contributing
 <!--Give instructions on how to contribute to this repository. Where do I ask questions? Do you accept PRs? What are the requirements to contribute? Don't be a jerk. Use issues if you can.-->
