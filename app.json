@@ -1,7 +1,7 @@
 {
     "name": "WDC Shift Management Contact Graph Extension",
     "description": "Extending WDC to do more complicated relationship queries using Neo4j from Graphene and Heroku.",
-    "repository": "https://github.com/cowie/wdcGraphContactExtension",
+    "repository": "https://github.com/rt-heroku/cdgGraphContentExtension",
     "keywords": ["node", "neo4j", "Heroku"],
     "scripts":{},
     "formation": {
