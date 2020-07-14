@@ -23,7 +23,7 @@ First, get you that WDC Salesforce org. If you don't, you're gonna have a bad ti
 
 Get into your Org and create a Connected App, and give it 5-10 to push out the details to all the servers. 
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/cowie/wdcGraphContactExtension)
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/rt-heroku/cdgGraphContentExtension)
 Run the button. Fill out config variables as the following
 * SFDCUSERNAME : Org's username. Needs read access to Shift, Employee, Individual, Contact, ServiceTerritory, ServiceResource objects.
 * SFDCPASSWORD : Your user password, with Dev Token appended.
