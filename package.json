@@ -11,7 +11,7 @@
     "express": "~4.16.0",
     "http-errors": "~1.6.2",
     "jsforce": "^1.9.3",
-    "moment": "^2.26.0",
+    "moment": "^2.29.4",
     "morgan": "~1.9.0",
     "neo4j-driver": "^4.0.2",
     "popoto": "^2.0.18",
